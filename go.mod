@@ -4,7 +4,6 @@ go 1.18
 
 require (
 	github.com/gballet/go-verkle v0.0.0-20220722103930-acd34254ebff
-	github.com/ledgerwatch/erigon-lib v0.0.0-20220920184624-708f4d9f624a
 	github.com/ledgerwatch/erigon-snapshot v1.0.1-0.20220913092204-de54ee30c7b9
 	github.com/ledgerwatch/log/v3 v3.4.2
 	github.com/ledgerwatch/secp256k1 v1.0.0
@@ -46,6 +45,7 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/kevinburke/go-bindata v3.21.0+incompatible
+	github.com/ledgerwatch/erigon-lib v0.0.0-20220922195913-916bf60410c4
 	github.com/nxadm/tail v1.4.9-0.20211216163028-4472660a31a6
 	github.com/pelletier/go-toml v1.9.5
 	github.com/pelletier/go-toml/v2 v2.0.3
