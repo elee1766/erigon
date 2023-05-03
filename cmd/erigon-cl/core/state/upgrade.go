@@ -27,11 +27,11 @@ func (b *BeaconState) UpgradeToAltair() error {
 		if err != nil {
 			return err
 		}
-		indicies, err := b.GetAttestingIndicies(attestation.Data, attestation.AggregationBits, false)
+		indices, err := b.GetAttestingIndicies(attestation.Data, attestation.AggregationBits, false)
 		if err != nil {
 			return err
 		}
-		for _, index := range indicies {
+		for _, index := range indices {
 			for _, flagIndex := range flags {
 				b.AddPreviousEpochParticipationAt(int(index), flagIndex)
 			}
