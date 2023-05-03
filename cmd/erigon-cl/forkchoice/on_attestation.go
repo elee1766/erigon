@@ -16,7 +16,8 @@ func (f *ForkChoiceStore) OnAttestation(attestation *cltypes.Attestation, fromBl
 	}
 	target := attestation.Data.Target
 
-	targetState, err := f.getCheckpointState(*target)
+	targetState := f.stateCache
+	err := f.getCheckpointState(targetState, *target)
 	if err != nil {
 		return nil
 	}

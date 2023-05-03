@@ -38,7 +38,11 @@ type ForkChoiceStore struct {
 	latestMessages   map[uint64]*LatestMessage
 	// We keep track of them so that we can forkchoice with EL.
 	eth2Roots *lru.Cache[libcommon.Hash, libcommon.Hash] // ETH2 root -> ETH1 hash
-	mu        sync.Mutex
+
+	// stateCache
+	stateCache *state.BeaconState
+
+	mu sync.Mutex
 	// EL
 	engine execution_client.ExecutionEngine
 }

@@ -235,6 +235,46 @@ func (f *ForkGraph) GetState(blockRoot libcommon.Hash, alwaysCopy bool) (*state.
 	return copyReferencedState, nil
 }
 
+func (f *ForkGraph) GetStateInto(target *state.BeaconState, blockRoot libcommon.Hash, alwaysCopy bool) error {
+	if f.currentStateBlockRoot == blockRoot {
+		if alwaysCopy {
+			return f.currentState.CopyInto(target)
+		}
+		return nil
+	}
+	// collect all blocks beetwen greatest extending node path and block.
+	blocksInTheWay := []*cltypes.SignedBeaconBlock{}
+	// Use the parent root as a reverse iterator.
+	currentIteratorRoot := blockRoot
+	// use the current reference state root as reconnectio
+	reconnectionRoot, err := f.currentReferenceState.BlockRoot()
+	if err != nil {
+		return err
+	}
+	// try and find the point of recconection
+	for currentIteratorRoot != reconnectionRoot {
+		block, isSegmentPresent := f.getBlock(currentIteratorRoot)
+		if !isSegmentPresent {
+			log.Debug("Could not retrieve state: Missing header", "missing", currentIteratorRoot)
+			return nil
+		}
+		blocksInTheWay = append(blocksInTheWay, block)
+		currentIteratorRoot = block.Block.ParentRoot
+	}
+	// Take a copy to the reference state.
+	err = f.currentReferenceState.CopyInto(target)
+	if err != nil {
+		return err
+	}
+	// Traverse the blocks from top to bottom.
+	for i := len(blocksInTheWay) - 1; i >= 0; i-- {
+		if err := transition.TransitionState(target, blocksInTheWay[i], false); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // updateChildren adds a new child to the parent node hash.
 func (f *ForkGraph) updateChildren(parent, child libcommon.Hash) {
 	childrens := f.childrens[parent]
@@ -283,6 +323,6 @@ func (f *ForkGraph) removeOldData() (err error) {
 	if f.currentReferenceStateRoot, err = f.currentReferenceState.HashSSZ(); err != nil {
 		return
 	}
-	f.nextReferenceState, err = f.currentState.Copy()
+	err = f.currentState.CopyInto(f.nextReferenceState)
 	return
 }

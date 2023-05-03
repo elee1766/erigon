@@ -67,28 +67,28 @@ func (f *ForkChoiceStore) Ancestor(root libcommon.Hash, slot uint64) libcommon.H
 }
 
 // getCheckpointState computes and caches checkpoint states.
-func (f *ForkChoiceStore) getCheckpointState(checkpoint cltypes.Checkpoint) (*state.BeaconState, error) {
+func (f *ForkChoiceStore) getCheckpointState(target *state.BeaconState, checkpoint cltypes.Checkpoint) error {
 	// check if it can be found in cache.
 	if state, ok := f.checkpointStates.Get(checkpoint); ok {
-		return state, nil
+		return state.CopyInto(target)
 	}
 	// If it is not in cache compute it and then put in cache.
-	baseState, err := f.forkGraph.GetState(checkpoint.Root, true)
+	err := f.forkGraph.GetStateInto(target, checkpoint.Root, true)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if baseState == nil {
-		return nil, fmt.Errorf("getCheckpointState: baseState not found in graph")
+	if target == nil {
+		return fmt.Errorf("getCheckpointState: baseState not found in graph")
 	}
 	// By default use the no change encoding to signal that there is no future epoch here.
-	if baseState.Slot() < f.computeStartSlotAtEpoch(checkpoint.Epoch) {
+	if target.Slot() < f.computeStartSlotAtEpoch(checkpoint.Epoch) {
 		log.Debug("Long checkpoint detected")
 		// If we require to change it then process the future epoch
-		if err := transition.ProcessSlots(baseState, f.computeStartSlotAtEpoch(checkpoint.Epoch)); err != nil {
-			return nil, err
+		if err := transition.ProcessSlots(target, f.computeStartSlotAtEpoch(checkpoint.Epoch)); err != nil {
+			return err
 		}
 	}
 	// Cache in memory what we are left with.
-	f.checkpointStates.Add(checkpoint, baseState)
-	return baseState, nil
+	f.checkpointStates.Add(checkpoint, target)
+	return nil
 }
