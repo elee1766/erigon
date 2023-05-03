@@ -20,7 +20,7 @@ func merkleizeTrieLeaves(leaves []byte) ([]byte, error) {
 		}
 		leaves = layer[:len(leaves)/2]
 	}
-	return leaves[0:32], nil
+	return leaves[:32], nil
 }
 
 func MerkleRootFromLeaves(leaves []byte) ([]byte, error) {

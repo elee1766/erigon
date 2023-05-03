@@ -36,17 +36,16 @@ func MerkleizeVector(elements []byte, length uint64) ([]byte, error) {
 	for i := uint8(0); i < depth; i++ {
 		// Sequential
 		if len(elements) < (8192 * 32) {
-			layerLen := len(elements)
-			if layerLen%(2*32) == 32 {
+			layerLen := len(elements) / 32
+			if layerLen%(2) == 1 {
 				zhash := getZeroHash(int(i), nil)
 				elements = append(elements, zhash...)
 			}
-			outputLen := len(elements) / 2
 			if err := gohashtree.HashByteSlice(elements, elements); err != nil {
 				o := [32]byte{}
 				return o[:], err
 			}
-			elements = elements[:outputLen]
+			elements = elements[:len(elements)/2]
 		} else {
 			// Parallel
 			// Make it divisible per 32.
@@ -87,7 +86,7 @@ func ArraysRootWithLimit(input []byte, limit uint64) ([32]byte, error) {
 		return [32]byte{}, err
 	}
 
-	lengthRoot := Uint64Root(uint64(len(input)))
+	lengthRoot := Uint64Root(uint64(len(input) / 32))
 	return utils.Keccak256(base[:], lengthRoot[:]), nil
 }
 
@@ -96,7 +95,6 @@ func ArraysRoot(input []byte, length uint64) ([]byte, error) {
 	for uint64(len(input)) < length*32 {
 		input = append(input, make([]byte, 32)...)
 	}
-
 	res, err := MerkleRootFromLeaves(input)
 	if err != nil {
 		return make([]byte, 32), err
