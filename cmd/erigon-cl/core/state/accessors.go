@@ -12,8 +12,8 @@ import (
 	"github.com/ledgerwatch/erigon/cl/cltypes"
 	"github.com/ledgerwatch/erigon/cl/fork"
 	"github.com/ledgerwatch/erigon/cl/utils"
+	"github.com/ledgerwatch/erigon/cmd/erigon-cl/core/state/shuffling"
 	"github.com/ledgerwatch/erigon/core/types"
-	eth2_shuffle "github.com/protolambda/eth2-shuffle"
 )
 
 const PreAllocatedRewardsAndPenalties = 8192
@@ -84,89 +84,6 @@ func (b *BeaconState) GetTotalSlashingAmount() (t uint64) {
 	})
 	return
 }
-func (b *BeaconState) ComputeShuffledIndex(ind, ind_count uint64, seed [32]byte, preInputs [][32]byte, hashFunc utils.HashFunc) (uint64, error) {
-	if ind >= ind_count {
-		return 0, fmt.Errorf("index=%d must be less than the index count=%d", ind, ind_count)
-	}
-	if len(preInputs) == 0 {
-		preInputs = b.ComputeShuffledIndexPreInputs(seed)
-	}
-	for i := uint64(0); i < b.BeaconConfig().ShuffleRoundCount; i++ {
-		// Read hash value.
-		hashValue := binary.LittleEndian.Uint64(preInputs[i][:8])
-
-		// Caclulate pivot and flip.
-		pivot := hashValue % ind_count
-		flip := (pivot + ind_count - ind) % ind_count
-
-		// No uint64 max function in go standard library.
-		position := ind
-		if flip > ind {
-			position = flip
-		}
-
-		// Construct the second hash input.
-		positionByteArray := make([]byte, 4)
-		binary.LittleEndian.PutUint32(positionByteArray, uint32(position>>8))
-		input2 := append(seed[:], byte(i))
-		input2 = append(input2, positionByteArray...)
-		hashedInput2 := hashFunc(input2)
-		// Read hash value.
-		byteVal := hashedInput2[(position%256)/8]
-		bitVal := (byteVal >> (position % 8)) % 2
-		if bitVal == 1 {
-			ind = flip
-		}
-	}
-	return ind, nil
-}
-
-func ComputeShuffledIndicies(beaconConfig *clparams.BeaconChainConfig, mixes []libcommon.Hash, indicies []uint64, slot uint64) []uint64 {
-	shuffledIndicies := make([]uint64, len(indicies))
-	copy(shuffledIndicies, indicies)
-	hashFunc := utils.OptimizedKeccak256()
-	epoch := slot / beaconConfig.SlotsPerEpoch
-	seed := GetSeed(beaconConfig, mixes, epoch, beaconConfig.DomainBeaconAttester)
-	eth2ShuffleHashFunc := func(data []byte) []byte {
-		hashed := hashFunc(data)
-		return hashed[:]
-	}
-	eth2_shuffle.UnshuffleList(eth2ShuffleHashFunc, shuffledIndicies, uint8(beaconConfig.ShuffleRoundCount), seed)
-	return shuffledIndicies
-}
-
-func (b *BeaconState) ComputeProposerIndex(indices []uint64, seed [32]byte) (uint64, error) {
-	if len(indices) == 0 {
-		return 0, nil
-	}
-	maxRandomByte := uint64(1<<8 - 1)
-	i := uint64(0)
-	total := uint64(len(indices))
-	buf := make([]byte, 8)
-	preInputs := b.ComputeShuffledIndexPreInputs(seed)
-	for {
-		shuffled, err := b.ComputeShuffledIndex(i%total, total, seed, preInputs, utils.Keccak256)
-		if err != nil {
-			return 0, err
-		}
-		candidateIndex := indices[shuffled]
-		if candidateIndex >= uint64(b.ValidatorLength()) {
-			return 0, fmt.Errorf("candidate index out of range: %d for validator set of length: %d", candidateIndex, b.ValidatorLength())
-		}
-		binary.LittleEndian.PutUint64(buf, i/32)
-		input := append(seed[:], buf...)
-		randomByte := uint64(utils.Keccak256(input)[i%32])
-
-		validator, err := b.ValidatorForValidatorIndex(int(candidateIndex))
-		if err != nil {
-			return 0, err
-		}
-		if validator.EffectiveBalance*maxRandomByte >= b.BeaconConfig().MaxEffectiveBalance*randomByte {
-			return candidateIndex, nil
-		}
-		i += 1
-	}
-}
 
 func (b *BeaconState) ComputeCommittee(indicies []uint64, slot uint64, index, count uint64) ([]uint64, error) {
 	lenIndicies := uint64(len(indicies))
@@ -175,11 +92,11 @@ func (b *BeaconState) ComputeCommittee(indicies []uint64, slot uint64, index, co
 	var shuffledIndicies []uint64
 	epoch := b.GetEpochAtSlot(slot)
 	randaoMixes := b.RandaoMixes()
-	seed := GetSeed(b.BeaconConfig(), randaoMixes[:], epoch, b.BeaconConfig().DomainBeaconAttester)
+	seed := shuffling.GetSeed(b.BeaconConfig(), randaoMixes[:], epoch, b.BeaconConfig().DomainBeaconAttester)
 	if shuffledIndicesInterface, ok := b.shuffledSetsCache.Get(seed); ok {
 		shuffledIndicies = shuffledIndicesInterface
 	} else {
-		shuffledIndicies = ComputeShuffledIndicies(b.BeaconConfig(), randaoMixes[:], indicies, slot)
+		shuffledIndicies = shuffling.ComputeShuffledIndicies(b.BeaconConfig(), randaoMixes[:], indicies, slot)
 		b.shuffledSetsCache.Add(seed, shuffledIndicies)
 	}
 	return shuffledIndicies[start:end], nil
@@ -192,15 +109,6 @@ func (b *BeaconState) GetBeaconProposerIndex() (uint64, error) {
 		}
 	}
 	return *b.proposerIndex, nil
-}
-
-func GetSeed(beaconConfig *clparams.BeaconChainConfig, mixes []libcommon.Hash, epoch uint64, domain [4]byte) libcommon.Hash {
-	mix := mixes[(epoch+beaconConfig.EpochsPerHistoricalVector-beaconConfig.MinSeedLookahead-1)%beaconConfig.EpochsPerHistoricalVector]
-	epochByteArray := make([]byte, 8)
-	binary.LittleEndian.PutUint64(epochByteArray, epoch)
-	input := append(domain[:], epochByteArray...)
-	input = append(input, mix[:]...)
-	return utils.Keccak256(input)
 }
 
 // BaseRewardPerIncrement return base rewards for processing sync committee and duties.
@@ -473,12 +381,12 @@ func (b *BeaconState) ComputeNextSyncCommittee() (*cltypes.SyncCommittee, error)
 	activeValidatorIndicies := b.GetActiveValidatorsIndices(epoch)
 	activeValidatorCount := uint64(len(activeValidatorIndicies))
 	mixes := b.RandaoMixes()
-	seed := GetSeed(b.BeaconConfig(), mixes[:], epoch, beaconConfig.DomainSyncCommittee)
+	seed := shuffling.GetSeed(b.BeaconConfig(), mixes[:], epoch, beaconConfig.DomainSyncCommittee)
 	i := uint64(0)
 	syncCommitteePubKeys := make([][48]byte, 0, cltypes.SyncCommitteeSize)
-	preInputs := b.ComputeShuffledIndexPreInputs(seed)
+	preInputs := shuffling.ComputeShuffledIndexPreInputs(b.BeaconConfig(), seed)
 	for len(syncCommitteePubKeys) < cltypes.SyncCommitteeSize {
-		shuffledIndex, err := b.ComputeShuffledIndex(i%activeValidatorCount, activeValidatorCount, seed, preInputs, optimizedHashFunc)
+		shuffledIndex, err := shuffling.ComputeShuffledIndex(b.BeaconConfig(), i%activeValidatorCount, activeValidatorCount, seed, preInputs, optimizedHashFunc)
 		if err != nil {
 			return nil, err
 		}

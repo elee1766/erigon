@@ -7,7 +7,6 @@ import (
 	"github.com/ledgerwatch/erigon/cl/clparams"
 	"github.com/ledgerwatch/erigon/cl/cltypes"
 	"github.com/ledgerwatch/erigon/cl/fork"
-	"github.com/ledgerwatch/erigon/cl/utils"
 )
 
 // Just a bunch of simple getters.
@@ -263,12 +262,4 @@ func (b *BeaconState) GetDomain(domainType [4]byte, epoch uint64) ([]byte, error
 		return fork.ComputeDomain(domainType[:], b.fork.PreviousVersion, b.genesisValidatorsRoot)
 	}
 	return fork.ComputeDomain(domainType[:], b.fork.CurrentVersion, b.genesisValidatorsRoot)
-}
-
-func (b *BeaconState) ComputeShuffledIndexPreInputs(seed [32]byte) [][32]byte {
-	ret := make([][32]byte, b.beaconConfig.ShuffleRoundCount)
-	for i := range ret {
-		ret[i] = utils.Keccak256(append(seed[:], byte(i)))
-	}
-	return ret
 }

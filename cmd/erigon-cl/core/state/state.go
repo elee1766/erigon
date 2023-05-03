@@ -12,6 +12,7 @@ import (
 	"github.com/ledgerwatch/erigon/cl/cltypes"
 	"github.com/ledgerwatch/erigon/cl/utils"
 	"github.com/ledgerwatch/erigon/cmd/erigon-cl/core/state/raw"
+	"github.com/ledgerwatch/erigon/cmd/erigon-cl/core/state/shuffling"
 )
 
 type HashFunc func([]byte) ([32]byte, error)
@@ -63,7 +64,7 @@ func (b *BeaconState) _updateProposerIndex() (err error) {
 	hash := sha256.New()
 	// Input for the seed hash.
 	randao := b.RandaoMixes()
-	input := GetSeed(b.BeaconConfig(), randao[:], epoch, b.BeaconConfig().DomainBeaconProposer)
+	input := shuffling.GetSeed(b.BeaconConfig(), randao[:], epoch, b.BeaconConfig().DomainBeaconProposer)
 	slotByteArray := make([]byte, 8)
 	binary.LittleEndian.PutUint64(slotByteArray, b.Slot())
 
@@ -80,7 +81,7 @@ func (b *BeaconState) _updateProposerIndex() (err error) {
 	seedArray := [32]byte{}
 	copy(seedArray[:], seed)
 	b.proposerIndex = new(uint64)
-	*b.proposerIndex, err = b.ComputeProposerIndex(indices, seedArray)
+	*b.proposerIndex, err = shuffling.ComputeProposerIndex(b.BeaconState, indices, seedArray)
 	return
 }
 
