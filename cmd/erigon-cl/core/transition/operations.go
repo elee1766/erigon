@@ -116,7 +116,7 @@ func ProcessAttesterSlashing(state *state.BeaconState, attSlashing *cltypes.Atte
 	return nil
 }
 
-func ProcessDeposit(state *state.BeaconState, deposit *cltypes.Deposit, fullValidation bool) error {
+func ProcessDeposit(s *state.BeaconState, deposit *cltypes.Deposit, fullValidation bool) error {
 	if deposit == nil {
 		return nil
 	}
@@ -124,13 +124,13 @@ func ProcessDeposit(state *state.BeaconState, deposit *cltypes.Deposit, fullVali
 	if err != nil {
 		return err
 	}
-	depositIndex := state.Eth1DepositIndex()
-	eth1Data := state.Eth1Data()
+	depositIndex := s.Eth1DepositIndex()
+	eth1Data := s.Eth1Data()
 	// Validate merkle proof for deposit leaf.
 	if fullValidation && !utils.IsValidMerkleBranch(
 		depositLeaf,
 		deposit.Proof,
-		state.BeaconConfig().DepositContractTreeDepth+1,
+		s.BeaconConfig().DepositContractTreeDepth+1,
 		depositIndex,
 		eth1Data.Root,
 	) {
@@ -138,14 +138,14 @@ func ProcessDeposit(state *state.BeaconState, deposit *cltypes.Deposit, fullVali
 	}
 
 	// Increment index
-	state.SetEth1DepositIndex(depositIndex + 1)
+	s.SetEth1DepositIndex(depositIndex + 1)
 	publicKey := deposit.Data.PubKey
 	amount := deposit.Data.Amount
 	// Check if pub key is in validator set
-	validatorIndex, has := state.ValidatorIndexByPubkey(publicKey)
+	validatorIndex, has := s.ValidatorIndexByPubkey(publicKey)
 	if !has {
 		// Agnostic domain.
-		domain, err := fork.ComputeDomain(state.BeaconConfig().DomainDeposit[:], utils.Uint32ToBytes4(state.BeaconConfig().GenesisForkVersion), [32]byte{})
+		domain, err := fork.ComputeDomain(s.BeaconConfig().DomainDeposit[:], utils.Uint32ToBytes4(s.BeaconConfig().GenesisForkVersion), [32]byte{})
 		if err != nil {
 			return err
 		}
@@ -162,17 +162,17 @@ func ProcessDeposit(state *state.BeaconState, deposit *cltypes.Deposit, fullVali
 			return nil
 		}
 		// Append validator
-		state.AddValidator(state.ValidatorFromDeposit(deposit), amount)
+		s.AddValidator(s.ValidatorFromDeposit(deposit), amount)
 		// Altair forward
-		if state.Version() >= clparams.AltairVersion {
-			state.AddCurrentEpochParticipationFlags(cltypes.ParticipationFlags(0))
-			state.AddPreviousEpochParticipationFlags(cltypes.ParticipationFlags(0))
-			state.AddInactivityScore(0)
+		if s.Version() >= clparams.AltairVersion {
+			s.AddCurrentEpochParticipationFlags(cltypes.ParticipationFlags(0))
+			s.AddPreviousEpochParticipationFlags(cltypes.ParticipationFlags(0))
+			s.AddInactivityScore(0)
 		}
 		return nil
 	}
 	// Increase the balance if exists already
-	return state.IncreaseBalance(validatorIndex, amount)
+	return state.IncreaseBalance(s.BeaconState, validatorIndex, amount)
 }
 
 // ProcessVoluntaryExit takes a voluntary exit and applies state transition.
@@ -221,15 +221,15 @@ func ProcessVoluntaryExit(state *state.BeaconState, signedVoluntaryExit *cltypes
 
 // ProcessWithdrawals processes withdrawals by decreasing the balance of each validator
 // and updating the next withdrawal index and validator index.
-func ProcessWithdrawals(state *state.BeaconState, withdrawals types.Withdrawals, fullValidation bool) error {
+func ProcessWithdrawals(s *state.BeaconState, withdrawals types.Withdrawals, fullValidation bool) error {
 	// Get the list of withdrawals, the expected withdrawals (if performing full validation),
 	// and the beacon configuration.
-	beaconConfig := state.BeaconConfig()
-	numValidators := uint64(len(state.Validators()))
+	beaconConfig := s.BeaconConfig()
+	numValidators := uint64(len(s.Validators()))
 
 	// Check if full validation is required and verify expected withdrawals.
 	if fullValidation {
-		expectedWithdrawals := state.ExpectedWithdrawals()
+		expectedWithdrawals := s.ExpectedWithdrawals()
 		if len(expectedWithdrawals) != len(withdrawals) {
 			return fmt.Errorf("ProcessWithdrawals: expected %d withdrawals, but got %d", len(expectedWithdrawals), len(withdrawals))
 		}
@@ -242,7 +242,7 @@ func ProcessWithdrawals(state *state.BeaconState, withdrawals types.Withdrawals,
 
 	// Decrease the balance of each validator for the corresponding withdrawal.
 	for _, withdrawal := range withdrawals {
-		if err := state.DecreaseBalance(withdrawal.Validator, withdrawal.Amount); err != nil {
+		if err := state.DecreaseBalance(s.BeaconState, withdrawal.Validator, withdrawal.Amount); err != nil {
 			return err
 		}
 	}
@@ -250,16 +250,16 @@ func ProcessWithdrawals(state *state.BeaconState, withdrawals types.Withdrawals,
 	// Update next withdrawal index based on number of withdrawals.
 	if len(withdrawals) > 0 {
 		lastWithdrawalIndex := withdrawals[len(withdrawals)-1].Index
-		state.SetNextWithdrawalIndex(lastWithdrawalIndex + 1)
+		s.SetNextWithdrawalIndex(lastWithdrawalIndex + 1)
 	}
 
 	// Update next withdrawal validator index based on number of withdrawals.
 	if len(withdrawals) == int(beaconConfig.MaxWithdrawalsPerPayload) {
 		lastWithdrawalValidatorIndex := withdrawals[len(withdrawals)-1].Validator + 1
-		state.SetNextWithdrawalValidatorIndex(lastWithdrawalValidatorIndex % numValidators)
+		s.SetNextWithdrawalValidatorIndex(lastWithdrawalValidatorIndex % numValidators)
 	} else {
-		nextIndex := state.NextWithdrawalValidatorIndex() + beaconConfig.MaxValidatorsPerWithdrawalsSweep
-		state.SetNextWithdrawalValidatorIndex(nextIndex % numValidators)
+		nextIndex := s.NextWithdrawalValidatorIndex() + beaconConfig.MaxValidatorsPerWithdrawalsSweep
+		s.SetNextWithdrawalValidatorIndex(nextIndex % numValidators)
 	}
 
 	return nil

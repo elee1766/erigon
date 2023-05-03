@@ -6,7 +6,7 @@ import (
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 )
 
-// these functions should only use getters
+// these are view functions that should only getters, but are here as common utilities for packages to use
 
 var (
 	ErrGetBlockRootAtSlotFuture = errors.New("GetBlockRootAtSlot: slot in the future")
@@ -15,6 +15,24 @@ var (
 // GetBlockRoot returns blook root at start of a given epoch
 func (b *BeaconState) GetBlockRoot(epoch uint64) (libcommon.Hash, error) {
 	return b.GetBlockRootAtSlot(epoch * b.BeaconConfig().SlotsPerEpoch)
+}
+
+// PreviousEpoch returns previous epoch.
+func (b *BeaconState) PreviousEpoch() uint64 {
+	epoch := b.Epoch()
+	if epoch == 0 {
+		return epoch
+	}
+	return epoch - 1
+}
+
+// GetTotalSlashingAmount return the sum of all slashings.
+func (b *BeaconState) GetTotalSlashingAmount() (t uint64) {
+	b.ForEachSlashingSegment(func(v uint64, idx, total int) bool {
+		t += v
+		return true
+	})
+	return
 }
 
 // GetTotalBalance return the sum of all balances within the given validator set.

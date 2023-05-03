@@ -95,6 +95,7 @@ func (b *BeaconState) _initializeValidatorsPhase0() error {
 	if b.Slot() == 0 {
 		return nil
 	}
+
 	previousEpochRoot, err := b.GetBlockRoot(b.PreviousEpoch())
 	if err != nil {
 		return err
@@ -212,16 +213,20 @@ func (b *BeaconState) initCaches() error {
 }
 
 func (b *BeaconState) initBeaconState() error {
-	b.publicKeyIndicies = make(map[[48]byte]uint64)
 	b._refreshActiveBalances()
+
+	b.publicKeyIndicies = make(map[[48]byte]uint64)
+
 	b.ForEachValidator(func(validator *cltypes.Validator, i, total int) bool {
 		b.publicKeyIndicies[validator.PublicKey] = uint64(i)
 		return true
 	})
+
 	b.initCaches()
 	if err := b._updateProposerIndex(); err != nil {
 		return err
 	}
+
 	if b.Version() >= clparams.Phase0Version {
 		return b._initializeValidatorsPhase0()
 	}

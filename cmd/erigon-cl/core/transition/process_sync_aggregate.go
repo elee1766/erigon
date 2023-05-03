@@ -13,11 +13,11 @@ import (
 // processSyncAggregate applies all the logic in the spec function `process_sync_aggregate` except
 // verifying the BLS signatures. It returns the modified beacons state and the list of validators'
 // public keys that voted, for future signature verification.
-func processSyncAggregate(state *state.BeaconState, sync *cltypes.SyncAggregate) ([][]byte, error) {
-	currentSyncCommittee := state.CurrentSyncCommittee()
+func processSyncAggregate(s *state.BeaconState, sync *cltypes.SyncAggregate) ([][]byte, error) {
+	currentSyncCommittee := s.CurrentSyncCommittee()
 
 	if currentSyncCommittee == nil {
-		return nil, errors.New("nil current sync committee in state")
+		return nil, errors.New("nil current sync committee in s")
 	}
 	committeeKeys := currentSyncCommittee.PubKeys
 	if len(sync.SyncCommiteeBits)*8 > len(committeeKeys) {
@@ -25,12 +25,12 @@ func processSyncAggregate(state *state.BeaconState, sync *cltypes.SyncAggregate)
 	}
 	var votedKeys [][]byte
 
-	proposerReward, participantReward, err := state.SyncRewards()
+	proposerReward, participantReward, err := s.SyncRewards()
 	if err != nil {
 		return nil, err
 	}
 
-	proposerIndex, err := state.GetBeaconProposerIndex()
+	proposerIndex, err := s.GetBeaconProposerIndex()
 	if err != nil {
 		return nil, err
 	}
@@ -40,19 +40,19 @@ func processSyncAggregate(state *state.BeaconState, sync *cltypes.SyncAggregate)
 	currPubKeyIndex := 0
 	for i := range syncAggregateBits {
 		for bit := 1; bit <= 128; bit *= 2 {
-			vIdx, exists := state.ValidatorIndexByPubkey(committeeKeys[currPubKeyIndex])
+			vIdx, exists := s.ValidatorIndexByPubkey(committeeKeys[currPubKeyIndex])
 			// Impossible scenario.
 			if !exists {
 				return nil, errors.New("validator public key does not exist in state")
 			}
 			if syncAggregateBits[i]&byte(bit) > 0 {
 				votedKeys = append(votedKeys, currentSyncCommittee.PubKeys[currPubKeyIndex][:])
-				if err := state.IncreaseBalance(vIdx, participantReward); err != nil {
+				if err := state.IncreaseBalance(s.BeaconState, vIdx, participantReward); err != nil {
 					return nil, err
 				}
 				earnedProposerReward += proposerReward
 			} else {
-				if err := state.DecreaseBalance(vIdx, participantReward); err != nil {
+				if err := state.DecreaseBalance(s.BeaconState, vIdx, participantReward); err != nil {
 					return nil, err
 				}
 			}
@@ -60,7 +60,7 @@ func processSyncAggregate(state *state.BeaconState, sync *cltypes.SyncAggregate)
 		}
 	}
 
-	return votedKeys, state.IncreaseBalance(proposerIndex, earnedProposerReward)
+	return votedKeys, state.IncreaseBalance(s.BeaconState, proposerIndex, earnedProposerReward)
 }
 
 func ProcessSyncAggregate(state *state.BeaconState, sync *cltypes.SyncAggregate, fullValidation bool) error {

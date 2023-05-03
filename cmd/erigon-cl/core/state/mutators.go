@@ -7,9 +7,10 @@ import (
 	"github.com/ledgerwatch/erigon/cl/clparams"
 	"github.com/ledgerwatch/erigon/cl/cltypes"
 	"github.com/ledgerwatch/erigon/cl/utils"
+	"github.com/ledgerwatch/erigon/cmd/erigon-cl/core/state/raw"
 )
 
-func (b *BeaconState) IncreaseBalance(index, delta uint64) error {
+func IncreaseBalance(b *raw.BeaconState, index, delta uint64) error {
 	currentBalance, err := b.ValidatorBalance(int(index))
 	if err != nil {
 		return err
@@ -17,7 +18,7 @@ func (b *BeaconState) IncreaseBalance(index, delta uint64) error {
 	return b.SetValidatorBalance(int(index), currentBalance+delta)
 }
 
-func (b *BeaconState) DecreaseBalance(index, delta uint64) error {
+func DecreaseBalance(b *raw.BeaconState, index, delta uint64) error {
 	currentBalance, err := b.ValidatorBalance(int(index))
 	if err != nil {
 		return err
@@ -29,8 +30,8 @@ func (b *BeaconState) DecreaseBalance(index, delta uint64) error {
 	return b.SetValidatorBalance(int(index), newBalance)
 }
 
-func (b *BeaconState) ComputeActivationExitEpoch(epoch uint64) uint64 {
-	return epoch + 1 + b.BeaconConfig().MaxSeedLookahead
+func ComputeActivationExitEpoch(config *clparams.BeaconChainConfig, epoch uint64) uint64 {
+	return epoch + 1 + config.MaxSeedLookahead
 }
 
 func (b *BeaconState) GetValidatorChurnLimit() uint64 {
@@ -48,7 +49,7 @@ func (b *BeaconState) InitiateValidatorExit(index uint64) error {
 	}
 
 	currentEpoch := b.Epoch()
-	exitQueueEpoch := b.ComputeActivationExitEpoch(currentEpoch)
+	exitQueueEpoch := ComputeActivationExitEpoch(b.BeaconConfig(), currentEpoch)
 	b.ForEachValidator(func(v *cltypes.Validator, idx, total int) bool {
 		if v.ExitEpoch != b.BeaconConfig().FarFutureEpoch && v.ExitEpoch > exitQueueEpoch {
 			exitQueueEpoch = v.ExitEpoch
@@ -117,7 +118,7 @@ func (b *BeaconState) SlashValidator(slashedInd uint64, whistleblowerInd *uint64
 	if err != nil {
 		return err
 	}
-	if err := b.DecreaseBalance(slashedInd, newEffectiveBalance/b.BeaconConfig().GetMinSlashingPenaltyQuotient(b.Version())); err != nil {
+	if err := DecreaseBalance(b.BeaconState, slashedInd, newEffectiveBalance/b.BeaconConfig().GetMinSlashingPenaltyQuotient(b.Version())); err != nil {
 		return err
 	}
 	proposerInd, err := b.GetBeaconProposerIndex()
@@ -130,8 +131,8 @@ func (b *BeaconState) SlashValidator(slashedInd uint64, whistleblowerInd *uint64
 	}
 	whistleBlowerReward := newEffectiveBalance / b.BeaconConfig().WhistleBlowerRewardQuotient
 	proposerReward := b.getSlashingProposerReward(whistleBlowerReward)
-	if err := b.IncreaseBalance(proposerInd, proposerReward); err != nil {
+	if err := IncreaseBalance(b.BeaconState, proposerInd, proposerReward); err != nil {
 		return err
 	}
-	return b.IncreaseBalance(*whistleblowerInd, whistleBlowerReward-proposerReward)
+	return IncreaseBalance(b.BeaconState, *whistleblowerInd, whistleBlowerReward-proposerReward)
 }

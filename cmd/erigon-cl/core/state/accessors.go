@@ -34,15 +34,6 @@ func (b *BeaconState) GetActiveValidatorsIndices(epoch uint64) (indicies []uint6
 	return
 }
 
-// PreviousEpoch returns previous epoch.
-func (b *BeaconState) PreviousEpoch() uint64 {
-	epoch := b.Epoch()
-	if epoch == 0 {
-		return epoch
-	}
-	return epoch - 1
-}
-
 // getUnslashedParticipatingIndices returns set of currently unslashed participating indexes
 func (b *BeaconState) GetUnslashedParticipatingIndices(flagIndex int, epoch uint64) (validatorSet []uint64, err error) {
 	var participation cltypes.ParticipationFlagsList
@@ -74,15 +65,6 @@ func (b *BeaconState) GetTotalActiveBalance() uint64 {
 		b._refreshActiveBalances()
 	}
 	return *b.totalActiveBalanceCache
-}
-
-// GetTotalSlashingAmount return the sum of all slashings.
-func (b *BeaconState) GetTotalSlashingAmount() (t uint64) {
-	b.ForEachSlashingSegment(func(v uint64, idx, total int) bool {
-		t += v
-		return true
-	})
-	return
 }
 
 func (b *BeaconState) ComputeCommittee(indicies []uint64, slot uint64, index, count uint64) ([]uint64, error) {
