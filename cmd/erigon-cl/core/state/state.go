@@ -95,6 +95,7 @@ func (b *BeaconState) _initializeValidatorsPhase0() error {
 	if err != nil {
 		return err
 	}
+
 	for _, attestation := range b.PreviousEpochAttestations() {
 		slotRoot, err := b.GetBlockRootAtSlot(attestation.Data.Slot)
 		if err != nil {
@@ -241,27 +242,9 @@ func (b *BeaconState) Copy() (bs *BeaconState, err error) {
 	if err := copied.initCaches(); err != nil {
 		return nil, err
 	}
-	for _, epoch := range b.activeValidatorsCache.Keys() {
-		val, has := b.activeValidatorsCache.Get(epoch)
-		if !has {
-			continue
-		}
-		copied.activeValidatorsCache.Add(epoch, val)
-	}
-	for _, key := range b.shuffledSetsCache.Keys() {
-		val, has := b.shuffledSetsCache.Get(key)
-		if !has {
-			continue
-		}
-		copied.shuffledSetsCache.Add(key, val)
-	}
-	for _, key := range b.committeeCache.Keys() {
-		val, has := b.committeeCache.Get(key)
-		if !has {
-			continue
-		}
-		copied.committeeCache.Add(key, val)
-	}
+	copyLRU(copied.activeValidatorsCache, b.activeValidatorsCache)
+	copyLRU(copied.shuffledSetsCache, b.shuffledSetsCache)
+	copyLRU(copied.committeeCache, b.committeeCache)
 	if b.totalActiveBalanceCache != nil {
 		copied.totalActiveBalanceCache = new(uint64)
 		*copied.totalActiveBalanceCache = *b.totalActiveBalanceCache
