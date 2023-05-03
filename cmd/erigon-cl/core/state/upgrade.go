@@ -85,6 +85,7 @@ func (b *BeaconState) UpgradeToCapella() error {
 	// Set new fields
 	b.SetNextWithdrawalIndex(0)
 	b.SetNextWithdrawalValidatorIndex(0)
+	b.ResetHistoricalSummaries()
 	// Update the state root cache
 	b.SetVersion(clparams.CapellaVersion)
 	return nil

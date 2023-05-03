@@ -223,12 +223,15 @@ func (b *BeaconState) initBeaconState() error {
 	return nil
 }
 
-func (b *BeaconState) Copy() (*BeaconState, error) {
-	copied := New(b.BeaconConfig())
-
-	copied.BeaconState = raw.New(b.BeaconConfig())
-	// Fill all the fields with copies
-
+func (b *BeaconState) Copy() (bs *BeaconState, err error) {
+	newRaw, reinit, err := b.BeaconState.Copy()
+	if err != nil {
+		return nil, err
+	}
+	copied := NewFromRaw(newRaw)
+	if reinit {
+		return copied, copied.initBeaconState()
+	}
 	copied.publicKeyIndicies = make(map[[48]byte]uint64)
 	for pk, index := range b.publicKeyIndicies {
 		copied.publicKeyIndicies[pk] = index

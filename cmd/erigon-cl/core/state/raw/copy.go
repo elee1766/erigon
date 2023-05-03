@@ -6,7 +6,7 @@ import (
 	"github.com/ledgerwatch/erigon/cl/cltypes"
 )
 
-func (b *BeaconState) Copy() (*BeaconState, error) {
+func (b *BeaconState) Copy() (*BeaconState, bool, error) {
 	copied := New(b.BeaconConfig())
 	copied.genesisTime = b.genesisTime
 	copied.genesisValidatorsRoot = b.genesisValidatorsRoot
@@ -37,7 +37,7 @@ func (b *BeaconState) Copy() (*BeaconState, error) {
 	copied.currentJustifiedCheckpoint = b.currentJustifiedCheckpoint.Copy()
 	copied.previousJustifiedCheckpoint = b.previousJustifiedCheckpoint.Copy()
 	if b.version == clparams.Phase0Version {
-		return copied, copied.init()
+		return copied, true, copied.init()
 	}
 	copied.currentSyncCommittee = b.currentSyncCommittee.Copy()
 	copied.nextSyncCommittee = b.nextSyncCommittee.Copy()
@@ -64,5 +64,5 @@ func (b *BeaconState) Copy() (*BeaconState, error) {
 	for leafIndex, touchedVal := range b.touchedLeaves {
 		copied.touchedLeaves[leafIndex] = touchedVal
 	}
-	return copied, nil
+	return copied, false, nil
 }

@@ -230,10 +230,10 @@ func (b *BeaconState) CurrentEpochAttestationsLength() int {
 	return len(b.currentEpochAttestations)
 }
 func (b *BeaconState) PreviousEpochAttestations() []*cltypes.PendingAttestation {
-	return b.currentEpochAttestations
+	return b.previousEpochAttestations
 }
 func (b *BeaconState) PreviousEpochAttestationsLength() int {
-	return len(b.currentEpochAttestations)
+	return len(b.previousEpochAttestations)
 }
 
 func (b *BeaconState) NextWithdrawalValidatorIndex() uint64 {
