@@ -17,7 +17,11 @@ import (
 
 type HashFunc func([]byte) ([32]byte, error)
 
+// BeaconState is a cached wrapper around a raw BeaconState provider
 type BeaconState struct {
+
+	// embedded BeaconState
+	// TODO: perhaps refactor and make a method BeaconState() which returns a pointer to raw.BeaconState
 	*raw.BeaconState
 
 	// Internals
@@ -242,9 +246,11 @@ func (b *BeaconState) Copy() (bs *BeaconState, err error) {
 	if err := copied.initCaches(); err != nil {
 		return nil, err
 	}
+
 	copyLRU(copied.activeValidatorsCache, b.activeValidatorsCache)
 	copyLRU(copied.shuffledSetsCache, b.shuffledSetsCache)
 	copyLRU(copied.committeeCache, b.committeeCache)
+
 	if b.totalActiveBalanceCache != nil {
 		copied.totalActiveBalanceCache = new(uint64)
 		*copied.totalActiveBalanceCache = *b.totalActiveBalanceCache
