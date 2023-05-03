@@ -416,12 +416,11 @@ func (b *BeaconState) ComputeNextSyncCommittee() (*cltypes.SyncCommittee, error)
 	if err != nil {
 		return nil, err
 	}
-	var aggregate [48]byte
-	copy(aggregate[:], aggregatePublicKeyBytes)
-	return &cltypes.SyncCommittee{
-		PubKeys:            syncCommitteePubKeys,
-		AggregatePublicKey: aggregate,
-	}, nil
+	o := &cltypes.SyncCommittee{
+		PubKeys: syncCommitteePubKeys,
+	}
+	copy(o.AggregatePublicKey[:], aggregatePublicKeyBytes)
+	return o, nil
 }
 
 func (b *BeaconState) IsValidIndexedAttestation(att *cltypes.IndexedAttestation) (bool, error) {
