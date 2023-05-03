@@ -149,7 +149,7 @@ func (b *BeaconState) GetRandaoMixes(epoch uint64) [32]byte {
 }
 
 func (b *BeaconState) ForEachSlashingSegment(fn func(v uint64, idx int, total int) bool) {
-	for idx, v := range b.slashings {
+	for idx, v := range &b.slashings {
 		ok := fn(v, idx, len(b.slashings))
 		if !ok {
 			break

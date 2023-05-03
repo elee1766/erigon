@@ -33,7 +33,7 @@ func (b *BeaconState) UpgradeToAltair() error {
 		}
 		for _, index := range indicies {
 			for _, flagIndex := range flags {
-				b.AddPreviousEpochParticipationAt(int(index), byte(flagIndex))
+				b.AddPreviousEpochParticipationAt(int(index), flagIndex)
 			}
 		}
 	}
