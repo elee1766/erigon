@@ -235,12 +235,12 @@ func (b *BeaconState) initBeaconState() error {
 }
 
 func (b *BeaconState) Copy() (bs *BeaconState, err error) {
-	newRaw, reinit, err := b.BeaconState.Copy()
+	newRaw, err := b.BeaconState.Copy()
 	if err != nil {
 		return nil, err
 	}
 	copied := NewFromRaw(newRaw)
-	if reinit {
+	if b.Version() == clparams.Phase0Version {
 		return copied, copied.initBeaconState()
 	}
 	copied.publicKeyIndicies = make(map[[48]byte]uint64)
