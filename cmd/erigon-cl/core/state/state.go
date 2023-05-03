@@ -265,80 +265,80 @@ func exs[T any](x []T, sz int) []T {
 	return x
 }
 
-func (b *BeaconState) CopyInto(copied *BeaconState) error {
+func (b *BeaconState) CopyInto(target *BeaconState) error {
 	// Fill all the fields with copies
-	copied.genesisTime = b.genesisTime
-	copied.genesisValidatorsRoot = b.genesisValidatorsRoot
-	copied.slot = b.slot
-	copied.fork = b.fork.Copy()
-	copied.latestBlockHeader = b.latestBlockHeader.Copy()
-	copy(copied.blockRoots[:], b.blockRoots[:])
-	copy(copied.stateRoots[:], b.stateRoots[:])
-	copied.historicalRoots = exs(copied.historicalRoots, len(b.historicalRoots))
-	copy(copied.historicalRoots, b.historicalRoots)
-	copied.eth1Data = b.eth1Data.Copy()
-	copied.eth1DataVotes = exs(copied.eth1DataVotes, len(b.eth1DataVotes))
+	target.genesisTime = b.genesisTime
+	target.genesisValidatorsRoot = b.genesisValidatorsRoot
+	target.slot = b.slot
+	target.fork = b.fork.Copy()
+	target.latestBlockHeader = b.latestBlockHeader.Copy()
+	copy(target.blockRoots[:], b.blockRoots[:])
+	copy(target.stateRoots[:], b.stateRoots[:])
+	target.historicalRoots = exs(target.historicalRoots, len(b.historicalRoots))
+	copy(target.historicalRoots, b.historicalRoots)
+	target.eth1Data = b.eth1Data.Copy()
+	target.eth1DataVotes = exs(target.eth1DataVotes, len(b.eth1DataVotes))
 	for i := range b.eth1DataVotes {
-		copied.eth1DataVotes[i] = b.eth1DataVotes[i].Copy()
+		target.eth1DataVotes[i] = b.eth1DataVotes[i].Copy()
 	}
-	copied.eth1DepositIndex = b.eth1DepositIndex
-	copied.validators = exs(copied.validators, len(b.validators))
+	target.eth1DepositIndex = b.eth1DepositIndex
+	target.validators = exs(target.validators, len(b.validators))
 	for i := range b.validators {
-		copied.validators[i] = b.validators[i].Copy()
+		b.validators[i].CopyInto(target.validators[i])
 	}
-	copied.balances = exs(copied.balances, len(b.balances))
-	copy(copied.balances, b.balances)
-	copy(copied.randaoMixes[:], b.randaoMixes[:])
-	copy(copied.slashings[:], b.slashings[:])
-	copied.previousEpochParticipation = b.previousEpochParticipation.Copy()
-	copied.currentEpochParticipation = b.currentEpochParticipation.Copy()
-	copied.finalizedCheckpoint = b.finalizedCheckpoint.Copy()
-	copied.currentJustifiedCheckpoint = b.currentJustifiedCheckpoint.Copy()
-	copied.previousJustifiedCheckpoint = b.previousJustifiedCheckpoint.Copy()
+	target.balances = exs(target.balances, len(b.balances))
+	copy(target.balances, b.balances)
+	copy(target.randaoMixes[:], b.randaoMixes[:])
+	copy(target.slashings[:], b.slashings[:])
+	target.previousEpochParticipation = b.previousEpochParticipation.Copy()
+	target.currentEpochParticipation = b.currentEpochParticipation.Copy()
+	target.finalizedCheckpoint = b.finalizedCheckpoint.Copy()
+	target.currentJustifiedCheckpoint = b.currentJustifiedCheckpoint.Copy()
+	target.previousJustifiedCheckpoint = b.previousJustifiedCheckpoint.Copy()
 	if b.version == clparams.Phase0Version {
-		return copied.initBeaconState()
+		return target.initBeaconState()
 	}
-	copied.currentSyncCommittee = b.currentSyncCommittee.Copy()
-	copied.nextSyncCommittee = b.nextSyncCommittee.Copy()
-	copied.inactivityScores = exs(copied.inactivityScores, len(b.inactivityScores))
-	copy(copied.inactivityScores, b.inactivityScores)
-	copied.justificationBits = b.justificationBits.Copy()
+	target.currentSyncCommittee = b.currentSyncCommittee.Copy()
+	target.nextSyncCommittee = b.nextSyncCommittee.Copy()
+	target.inactivityScores = exs(target.inactivityScores, len(b.inactivityScores))
+	copy(target.inactivityScores, b.inactivityScores)
+	target.justificationBits = b.justificationBits.Copy()
 
 	if b.version >= clparams.BellatrixVersion {
-		copied.latestExecutionPayloadHeader = b.latestExecutionPayloadHeader.Copy()
+		target.latestExecutionPayloadHeader = b.latestExecutionPayloadHeader.Copy()
 	}
-	copied.nextWithdrawalIndex = b.nextWithdrawalIndex
-	copied.nextWithdrawalValidatorIndex = b.nextWithdrawalValidatorIndex
-	copied.historicalSummaries = exs(copied.historicalSummaries, len(b.historicalSummaries))
+	target.nextWithdrawalIndex = b.nextWithdrawalIndex
+	target.nextWithdrawalValidatorIndex = b.nextWithdrawalValidatorIndex
+	target.historicalSummaries = exs(target.historicalSummaries, len(b.historicalSummaries))
 	for i := range b.historicalSummaries {
-		copied.historicalSummaries[i] = &cltypes.HistoricalSummary{
+		target.historicalSummaries[i] = &cltypes.HistoricalSummary{
 			BlockSummaryRoot: b.historicalSummaries[i].BlockSummaryRoot,
 			StateSummaryRoot: b.historicalSummaries[i].StateSummaryRoot,
 		}
 	}
-	copied.version = b.version
+	target.version = b.version
 	// Now sync internals
-	copy(copied.leaves[:], b.leaves[:])
-	if copied.touchedLeaves == nil {
-		copied.touchedLeaves = make(map[StateLeafIndex]bool, 8)
+	copy(target.leaves[:], b.leaves[:])
+	if target.touchedLeaves == nil {
+		target.touchedLeaves = make(map[StateLeafIndex]bool, 8)
 	}
-	for k := range copied.touchedLeaves {
-		delete(copied.touchedLeaves, k)
+	for k := range target.touchedLeaves {
+		delete(target.touchedLeaves, k)
 	}
 	for leafIndex, touchedVal := range b.touchedLeaves {
-		copied.touchedLeaves[leafIndex] = touchedVal
+		target.touchedLeaves[leafIndex] = touchedVal
 	}
-	if copied.publicKeyIndicies == nil {
-		copied.publicKeyIndicies = make(map[[48]byte]uint64)
+	if target.publicKeyIndicies == nil {
+		target.publicKeyIndicies = make(map[[48]byte]uint64)
 	}
-	for k := range copied.publicKeyIndicies {
-		delete(copied.publicKeyIndicies, k)
+	for k := range target.publicKeyIndicies {
+		delete(target.publicKeyIndicies, k)
 	}
 	for pk, index := range b.publicKeyIndicies {
-		copied.publicKeyIndicies[pk] = index
+		target.publicKeyIndicies[pk] = index
 	}
 	// Sync caches
-	if err := copied.initCaches(); err != nil {
+	if err := target.initCaches(); err != nil {
 		return err
 	}
 	for _, epoch := range b.activeValidatorsCache.Keys() {
@@ -346,26 +346,26 @@ func (b *BeaconState) CopyInto(copied *BeaconState) error {
 		if !has {
 			continue
 		}
-		copied.activeValidatorsCache.Add(epoch, val)
+		target.activeValidatorsCache.Add(epoch, val)
 	}
 	for _, key := range b.shuffledSetsCache.Keys() {
 		val, has := b.shuffledSetsCache.Get(key)
 		if !has {
 			continue
 		}
-		copied.shuffledSetsCache.Add(key, val)
+		target.shuffledSetsCache.Add(key, val)
 	}
 	for _, key := range b.committeeCache.Keys() {
 		val, has := b.committeeCache.Get(key)
 		if !has {
 			continue
 		}
-		copied.committeeCache.Add(key, val)
+		target.committeeCache.Add(key, val)
 	}
 	if b.totalActiveBalanceCache != nil {
-		copied.totalActiveBalanceCache = new(uint64)
-		*copied.totalActiveBalanceCache = *b.totalActiveBalanceCache
-		copied.totalActiveBalanceRootCache = b.totalActiveBalanceRootCache
+		target.totalActiveBalanceCache = new(uint64)
+		*target.totalActiveBalanceCache = *b.totalActiveBalanceCache
+		target.totalActiveBalanceRootCache = b.totalActiveBalanceRootCache
 	}
 	return nil
 }
