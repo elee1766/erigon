@@ -88,7 +88,11 @@ func (f *ForkChoiceStore) getCheckpointState(target *state.BeaconState, checkpoi
 			return err
 		}
 	}
-	// Cache in memory what we are left with.
-	f.checkpointStates.Add(checkpoint, target)
+	// Cache in memory a copy
+	tcopy, err := target.Copy()
+	if err != nil {
+		return err
+	}
+	f.checkpointStates.Add(checkpoint, tcopy)
 	return nil
 }
