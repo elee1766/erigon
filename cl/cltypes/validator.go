@@ -406,6 +406,26 @@ func (v *Validator) Active(epoch uint64) bool {
 	return v.ActivationEpoch <= epoch && epoch < v.ExitEpoch
 }
 
+func (v *Validator) CopyInto(res *Validator) {
+	v.PublicKey = res.PublicKey
+	v.WithdrawalCredentials = res.WithdrawalCredentials
+	v.EffectiveBalance = res.EffectiveBalance
+	v.Slashed = res.Slashed
+	v.ActivationEligibilityEpoch = res.ActivationEligibilityEpoch
+	v.ActivationEpoch = res.ActivationEpoch
+	v.ExitEpoch = res.ExitEpoch
+	v.WithdrawableEpoch = res.WithdrawableEpoch
+	v.IsCurrentMatchingSourceAttester = res.IsCurrentMatchingSourceAttester
+	v.IsPreviousMatchingSourceAttester = res.IsPreviousMatchingSourceAttester
+	v.IsCurrentMatchingTargetAttester = res.IsCurrentMatchingTargetAttester
+	v.IsPreviousMatchingTargetAttester = res.IsPreviousMatchingTargetAttester
+	v.IsCurrentMatchingHeadAttester = res.IsCurrentMatchingHeadAttester
+	v.IsPreviousMatchingHeadAttester = res.IsPreviousMatchingHeadAttester
+
+	// these two are set to nil because they are phase0 fields we do not care about
+	//v.MinCurrentInclusionDelayAttestation = res.MinCurrentInclusionDelayAttestation
+	//v.MinPreviousInclusionDelayAttestation = res.MinPreviousInclusionDelayAttestation
+}
 func (v *Validator) Copy() *Validator {
 	copied := *v
 	return &copied
