@@ -12,8 +12,7 @@ func (b *BeaconState) DecodeSSZWithVersion(buf []byte, version int) error {
 	if err := b.BeaconState.DecodeSSZWithVersion(buf, version); err != nil {
 		return err
 	}
-	b.initBeaconState()
-	return nil
+	return b.initBeaconState()
 }
 
 // SSZ size of the Beacon State
