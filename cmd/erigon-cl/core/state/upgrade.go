@@ -31,14 +31,11 @@ func (b *BeaconState) UpgradeToAltair() error {
 		if err != nil {
 			return err
 		}
-
-		pep := b.EpochParticipation(false)
 		for _, index := range indicies {
 			for _, flagIndex := range flags {
-				pep[index].Add(int(flagIndex))
+				b.AddPreviousEpochParticipationAt(int(index), byte(flagIndex))
 			}
 		}
-		b.SetPreviousEpochParticipationFlags(pep)
 	}
 	b.ResetPreviousEpochAttestations()
 	// Process sync committees

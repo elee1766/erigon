@@ -333,6 +333,10 @@ func (b *BeaconState) AddPreviousEpochParticipationFlags(flags cltypes.Participa
 	b.markLeaf(PreviousEpochParticipationLeafIndex)
 	b.previousEpochParticipation = append(b.previousEpochParticipation, flags)
 }
+func (b *BeaconState) AddPreviousEpochParticipationAt(index int, delta byte) {
+	b.markLeaf(PreviousEpochParticipationLeafIndex)
+	b.previousEpochParticipation[index] += cltypes.ParticipationFlags(delta)
+}
 
 // phase0 fields
 func (b *BeaconState) AddCurrentEpochAtteastation(attestation *cltypes.PendingAttestation) {

@@ -208,11 +208,11 @@ func (b *BeaconState) initCaches() error {
 func (b *BeaconState) initBeaconState() error {
 	b.publicKeyIndicies = make(map[[48]byte]uint64)
 	b._refreshActiveBalances()
-	b.initCaches()
 	b.ForEachValidator(func(validator *cltypes.Validator, i, total int) bool {
 		b.publicKeyIndicies[validator.PublicKey] = uint64(i)
 		return true
 	})
+	b.initCaches()
 	if err := b._updateProposerIndex(); err != nil {
 		return err
 	}
