@@ -11,13 +11,13 @@ import (
 )
 
 type gohashtreeWorkerIO struct {
-	elements [][32]byte // elements to go hash
-	index    int        // index
+	elements []byte // elements to go hash
+	index    int    // index
 }
 
 func gohashtreeWorker(g *gohashtreeWorkerIO, result chan *gohashtreeWorkerIO) {
-	outputLen := len(g.elements) / 2
-	if err := gohashtree.Hash(g.elements, g.elements); err != nil {
+	outputLen := len(g.elements) / (2)
+	if err := gohashtree.HashByteSlice(g.elements, g.elements); err != nil {
 		panic(err)
 	}
 	g.elements = g.elements[:outputLen]
@@ -26,35 +26,37 @@ func gohashtreeWorker(g *gohashtreeWorkerIO, result chan *gohashtreeWorkerIO) {
 
 // MerkleizeVector uses our optimized routine to hash a list of 32-byte
 // elements.
-func MerkleizeVector(elements [][32]byte, length uint64) ([32]byte, error) {
+func MerkleizeVector(elements []byte, length uint64) ([]byte, error) {
 	depth := getDepth(length)
 	// Return zerohash at depth
 	if len(elements) == 0 {
-		return ZeroHashes[depth], nil
+		return getZeroHash(int(depth), nil), nil
 	}
 	numThreads := 16
 	for i := uint8(0); i < depth; i++ {
 		// Sequential
-		if len(elements) < 8192 {
+		if len(elements) < (8192 * 32) {
 			layerLen := len(elements)
-			if layerLen%2 == 1 {
-				elements = append(elements, ZeroHashes[i])
+			if layerLen%(2*32) == 32 {
+				zhash := getZeroHash(int(i), nil)
+				elements = append(elements, zhash...)
 			}
 			outputLen := len(elements) / 2
-			if err := gohashtree.Hash(elements, elements); err != nil {
-				return [32]byte{}, err
+			if err := gohashtree.HashByteSlice(elements, elements); err != nil {
+				o := [32]byte{}
+				return o[:], err
 			}
 			elements = elements[:outputLen]
 		} else {
 			// Parallel
 			// Make it divisible per 32.
 			for len(elements)%(numThreads*2) != 0 {
-				elements = append(elements, ZeroHashes[i])
+				elements = append(elements, getZeroHash(int(i), nil)...)
 			}
 			outputLen := len(elements) / 2
 			branchSize := len(elements) / numThreads
 			resultCh := make(chan *gohashtreeWorkerIO)
-			outputBranches := make([][][32]byte, numThreads)
+			outputBranches := make([][]byte, numThreads)
 			for i := 0; i < numThreads; i++ {
 				go gohashtreeWorker(&gohashtreeWorkerIO{
 					elements: elements[i*branchSize : (i*branchSize)+branchSize],
@@ -75,11 +77,11 @@ func MerkleizeVector(elements [][32]byte, length uint64) ([32]byte, error) {
 		}
 
 	}
-	return elements[0], nil
+	return elements[:32], nil
 }
 
 // ArraysRootWithLimit calculates the root hash of an array of hashes by first vectorizing the input array using the MerkleizeVector function, then calculating the root hash of the vectorized array using the Keccak256 function and the root hash of the length of the input array.
-func ArraysRootWithLimit(input [][32]byte, limit uint64) ([32]byte, error) {
+func ArraysRootWithLimit(input []byte, limit uint64) ([32]byte, error) {
 	base, err := MerkleizeVector(input, limit)
 	if err != nil {
 		return [32]byte{}, err
@@ -90,14 +92,14 @@ func ArraysRootWithLimit(input [][32]byte, limit uint64) ([32]byte, error) {
 }
 
 // ArraysRoot calculates the root hash of an array of hashes by first making a copy of the input array, then calculating the Merkle root of the copy using the MerkleRootFromLeaves function.
-func ArraysRoot(input [][32]byte, length uint64) ([32]byte, error) {
-	for uint64(len(input)) != length {
-		input = append(input, [32]byte{})
+func ArraysRoot(input []byte, length uint64) ([]byte, error) {
+	for uint64(len(input)) < length*32 {
+		input = append(input, make([]byte, 32)...)
 	}
 
 	res, err := MerkleRootFromLeaves(input)
 	if err != nil {
-		return [32]byte{}, err
+		return make([]byte, 32), err
 	}
 
 	return res, nil
@@ -142,9 +144,7 @@ func BitlistRootWithLimit(bits []byte, limit uint64) ([32]byte, error) {
 // BitlistRootWithLimitForState computes the HashSSZ merkleization of
 // participation roots.
 func BitlistRootWithLimitForState(bits []byte, limit uint64) ([32]byte, error) {
-	roots := packBits(bits)
-
-	base, err := MerkleizeVector(roots, (limit+31)/32)
+	base, err := MerkleizeVector(packBits(bits), (limit+31)/32)
 	if err != nil {
 		return [32]byte{}, err
 	}
@@ -153,12 +153,12 @@ func BitlistRootWithLimitForState(bits []byte, limit uint64) ([32]byte, error) {
 	return utils.Keccak256(base[:], lengthRoot[:]), nil
 }
 
-func packBits(bytes []byte) [][32]byte {
-	var chunks [][32]byte
+func packBits(bytes []byte) []byte {
+	var chunks []byte
 	for i := 0; i < len(bytes); i += 32 {
 		var chunk [32]byte
 		copy(chunk[:], bytes[i:])
-		chunks = append(chunks, chunk)
+		chunks = append(chunks, chunk[:]...)
 	}
 	return chunks
 }
@@ -184,9 +184,9 @@ func parseBitlist(dst, buf []byte) ([]byte, uint64) {
 func TransactionsListRoot(transactions [][]byte) (libcommon.Hash, error) {
 	txCount := uint64(len(transactions))
 
-	leaves := [][32]byte{}
+	leaves := []byte{}
 	for _, transaction := range transactions {
-		transactionLength := uint64(len(transaction))
+		transactionLength := uint64(len(transaction)) / 32
 		packedTransactions := packBits(transaction) // Pack transactions
 		transactionsBaseRoot, err := MerkleizeVector(packedTransactions, 33554432)
 		if err != nil {
@@ -194,7 +194,8 @@ func TransactionsListRoot(transactions [][]byte) (libcommon.Hash, error) {
 		}
 
 		lengthRoot := Uint64Root(transactionLength)
-		leaves = append(leaves, utils.Keccak256(transactionsBaseRoot[:], lengthRoot[:]))
+		k256 := utils.Keccak256(transactionsBaseRoot, lengthRoot[:])
+		leaves = append(leaves, k256[:]...)
 	}
 	transactionsBaseRoot, err := MerkleizeVector(leaves, 1048576)
 	if err != nil {
@@ -207,13 +208,13 @@ func TransactionsListRoot(transactions [][]byte) (libcommon.Hash, error) {
 }
 
 func ListObjectSSZRoot[T ssz.HashableSSZ](list []T, limit uint64) ([32]byte, error) {
-	subLeaves := make([][32]byte, 0, len(list))
+	subLeaves := make([]byte, 0, len(list)*32)
 	for _, element := range list {
 		subLeaf, err := element.HashSSZ()
 		if err != nil {
 			return [32]byte{}, err
 		}
-		subLeaves = append(subLeaves, subLeaf)
+		subLeaves = append(subLeaves, subLeaf[:]...)
 	}
 	vectorLeaf, err := MerkleizeVector(subLeaves, limit)
 	if err != nil {

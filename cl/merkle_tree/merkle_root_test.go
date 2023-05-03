@@ -12,22 +12,22 @@ import (
 
 func TestEmptyArraysRoot(t *testing.T) {
 	expected := libcommon.HexToHash("df6af5f5bbdb6be9ef8aa618e4bf8073960867171e29676f8b284dea6a08a85e")
-	root, err := merkle_tree.ArraysRoot([][32]byte{}, state_encoding.StateRootsLength)
+	root, err := merkle_tree.ArraysRoot([]byte{}, state_encoding.StateRootsLength)
 	require.NoError(t, err)
-	require.Equal(t, expected, libcommon.Hash(root))
+	require.EqualValues(t, expected[:], root)
 }
 
 func TestEmptyArraysWithLengthRoot(t *testing.T) {
 	expected := libcommon.HexToHash("0xf770287da731841c38eb035da016bd2daad53bf0bca607461c0685b0ea54c5f9")
-	roots := [][32]byte{
-		libcommon.BytesToHash([]byte{1}),
-		libcommon.BytesToHash([]byte{2}),
-		libcommon.BytesToHash([]byte{3}),
-		libcommon.BytesToHash([]byte{4}),
-		libcommon.BytesToHash([]byte{5}),
-		libcommon.BytesToHash([]byte{6}),
-		libcommon.BytesToHash([]byte{7}),
-		libcommon.BytesToHash([]byte{8}),
+	roots := []byte{
+		1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	}
 	root, err := merkle_tree.ArraysRootWithLimit(roots, 8192)
 	require.NoError(t, err)

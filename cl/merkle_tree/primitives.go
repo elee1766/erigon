@@ -20,19 +20,15 @@ func BoolRoot(b bool) (root libcommon.Hash) {
 	return
 }
 
-func SignatureRoot(signature [96]byte) (libcommon.Hash, error) {
-	return ArraysRoot([][32]byte{
-		libcommon.BytesToHash(signature[0:32]),
-		libcommon.BytesToHash(signature[32:64]),
-		libcommon.BytesToHash(signature[64:]),
-	}, 4)
+func SignatureRoot(signature [96]byte) ([]byte, error) {
+	return ArraysRoot(signature[:], 4)
 }
 
-func PublicKeyRoot(key [48]byte) (libcommon.Hash, error) {
+func PublicKeyRoot(key [48]byte) ([]byte, error) {
 	var lastByte [32]byte
 	copy(lastByte[:], key[32:])
-	return ArraysRoot([][32]byte{
-		libcommon.BytesToHash(key[:32]),
-		lastByte,
-	}, 2)
+	return ArraysRoot(append(
+		key[:33],
+		make([]byte, 31)...,
+	), 2)
 }

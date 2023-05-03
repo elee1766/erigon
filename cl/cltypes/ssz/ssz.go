@@ -18,6 +18,10 @@ type HashableSSZ interface {
 	HashSSZ() ([32]byte, error)
 }
 
+type HashableSSZBuf interface {
+	HashSSZBuf(scratch []byte) ([32]byte, error)
+}
+
 type EncodableSSZ interface {
 	Marshaler
 	Unmarshaler

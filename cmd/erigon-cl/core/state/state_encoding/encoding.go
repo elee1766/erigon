@@ -33,5 +33,11 @@ func SlashingsRoot(slashings []uint64) ([32]byte, error) {
 	if err != nil {
 		return [32]byte{}, err
 	}
-	return merkle_tree.ArraysRoot(slashingChunks, uint64(len(slashingChunks)))
+	os, err := merkle_tree.ArraysRoot(slashingChunks, uint64(len(slashingChunks)))
+	if err != nil {
+		return [32]byte{}, err
+	}
+	o := [32]byte{}
+	copy(o[:], os)
+	return o, nil
 }

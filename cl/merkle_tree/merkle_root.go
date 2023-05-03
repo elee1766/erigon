@@ -9,26 +9,26 @@ import (
 )
 
 // merkleizeTrieLeaves returns intermediate roots of given leaves.
-func merkleizeTrieLeaves(leaves [][32]byte) ([32]byte, error) {
-	layer := make([][32]byte, len(leaves)/2)
-	for len(leaves) > 1 {
-		if !utils.IsPowerOf2(uint64(len(leaves))) {
-			return [32]byte{}, fmt.Errorf("hash layer is a non power of 2: %d", len(leaves))
+func merkleizeTrieLeaves(leaves []byte) ([]byte, error) {
+	layer := make([]byte, len(leaves)/2)
+	for len(leaves) > 32 {
+		if !utils.IsPowerOf32(uint64(len(leaves))) {
+			return nil, fmt.Errorf("hash layer is a non power of 2: %d", len(leaves))
 		}
-		if err := gohashtree.Hash(layer, leaves); err != nil {
-			return [32]byte{}, err
+		if err := gohashtree.HashByteSlice(layer, leaves); err != nil {
+			return nil, err
 		}
 		leaves = layer[:len(leaves)/2]
 	}
-	return leaves[0], nil
+	return leaves[0:32], nil
 }
 
-func MerkleRootFromLeaves(leaves [][32]byte) ([32]byte, error) {
+func MerkleRootFromLeaves(leaves []byte) ([]byte, error) {
 	if len(leaves) == 0 {
-		return [32]byte{}, errors.New("zero leaves provided")
+		return nil, errors.New("zero leaves provided")
 	}
-	if len(leaves) == 1 {
-		return leaves[0], nil
+	if len(leaves) == 32 {
+		return leaves[0:32], nil
 	}
 	hashLayer := leaves
 	return merkleizeTrieLeaves(hashLayer)
