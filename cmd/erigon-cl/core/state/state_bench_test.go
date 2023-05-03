@@ -6,6 +6,7 @@ import (
 	"github.com/ledgerwatch/erigon/cl/clparams"
 	"github.com/ledgerwatch/erigon/cl/utils"
 	"github.com/ledgerwatch/erigon/cmd/erigon-cl/core/state"
+	"github.com/ledgerwatch/erigon/cmd/erigon-cl/core/state/shuffling"
 	eth2_shuffle "github.com/protolambda/eth2-shuffle"
 )
 
@@ -27,8 +28,8 @@ func BenchmarkErigonShuffledIndex(b *testing.B) {
 	keccakOptimized := utils.OptimizedKeccak256()
 
 	seed := [32]byte{2, 35, 6}
-	preInputs := s.ComputeShuffledIndexPreInputs(seed)
+	preInputs := shuffling.ComputeShuffledIndexPreInputs(s.BeaconConfig(), seed)
 	for i := 0; i < b.N; i++ {
-		s.ComputeShuffledIndex(10, 1000, seed, preInputs, keccakOptimized)
+		shuffling.ComputeShuffledIndex(s.BeaconConfig(), 10, 1000, seed, preInputs, keccakOptimized)
 	}
 }
