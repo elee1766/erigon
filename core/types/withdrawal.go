@@ -113,15 +113,20 @@ func (obj *Withdrawal) EncodingSizeSSZ() int {
 	return 24 + length.Addr
 }
 
-func (obj *Withdrawal) HashSSZ() ([32]byte, error) { // the [32]byte is temporary
+func (obj *Withdrawal) HashSSZ() ([]byte, error) { // the [32]byte is temporary
 	var addressLeaf [32]byte
 	copy(addressLeaf[:], obj.Address[:])
-	return merkle_tree.ArraysRoot([][32]byte{
-		merkle_tree.Uint64Root(obj.Index),
-		merkle_tree.Uint64Root(obj.Validator),
-		addressLeaf,
-		merkle_tree.Uint64Root(obj.Amount),
-	}, 4)
+	xs, err := merkle_tree.ArraysRoot(merkle_tree.JoinB32(
+		[][32]byte{
+			merkle_tree.Uint64Root(obj.Index),
+			merkle_tree.Uint64Root(obj.Validator),
+			addressLeaf,
+			merkle_tree.Uint64Root(obj.Amount),
+		}), 4)
+	if err != nil {
+		return nil, err
+	}
+	return xs, nil
 }
 
 func (obj *Withdrawal) DecodeRLP(s *rlp.Stream) error {
@@ -177,24 +182,26 @@ func (s Withdrawals) EncodeIndex(i int, w *bytes.Buffer) {
 }
 
 // HashSSZ hash a serie of withdrawals together given certain limit (16 for ETH1).
-func (obj Withdrawals) HashSSZ(limit uint64) ([32]byte, error) { // the [32]byte is temporary
-	leaves := make([][32]byte, len(obj))
+func (obj Withdrawals) HashSSZ(limit uint64) ([]byte, error) { // the [32]byte is temporary
+	leaves := make([]byte, len(obj)*32)
 	var err error
 	// Compute trees of each withdrawal.
-	for i, withdrawal := range obj {
-		leaves[i], err = withdrawal.HashSSZ()
+	for _, withdrawal := range obj {
+		cur, err := withdrawal.HashSSZ()
 		if err != nil {
-			return [32]byte{}, err
+			return nil, err
 		}
+		leaves = append(leaves, cur...)
 	}
+	lroot := merkle_tree.Uint64Root(uint64(len(obj)))
 	// Compute merklized base root.
 	baseRoot, err := merkle_tree.MerkleizeVector(leaves, limit)
 	if err != nil {
-		return [32]byte{}, err
+		return nil, err
 	}
 	// Mix with length
-	return merkle_tree.ArraysRoot([][32]byte{
+	return merkle_tree.ArraysRoot(append(
 		baseRoot,
-		merkle_tree.Uint64Root(uint64(len(obj))),
-	}, 2)
+		lroot[:]...,
+	), 2)
 }

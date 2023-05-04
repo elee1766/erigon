@@ -51,17 +51,21 @@ func (a *AggregateAndProof) EncodingSizeSSZ() int {
 	return 108 + a.Aggregate.EncodingSizeSSZ()
 }
 
-func (a *AggregateAndProof) HashSSZ() ([32]byte, error) {
+func (a *AggregateAndProof) HashSSZ() ([]byte, error) {
 	indexRoot := merkle_tree.Uint64Root(a.AggregatorIndex)
 	aggregateRoot, err := a.Aggregate.HashSSZ()
 	if err != nil {
-		return [32]byte{}, err
+		return nil, err
 	}
 	selectionProof, err := merkle_tree.SignatureRoot(a.SelectionProof)
 	if err != nil {
-		return [32]byte{}, err
+		return nil, err
 	}
-	return merkle_tree.ArraysRoot([][32]byte{indexRoot, aggregateRoot, selectionProof}, 4)
+	o := make([]byte, 32*3)
+	copy(o, indexRoot[:])
+	copy(o[32:], aggregateRoot[:])
+	copy(o[64:], selectionProof)
+	return merkle_tree.ArraysRoot(o, 4)
 }
 
 type SignedAggregateAndProof struct {
@@ -144,16 +148,15 @@ func (agg *SyncAggregate) EncodingSizeSSZ() int {
 	return 160
 }
 
-func (agg *SyncAggregate) HashSSZ() ([32]byte, error) {
-	var (
-		leaves = make([][32]byte, 2)
-		err    error
-	)
-	leaves[0] = utils.Keccak256(agg.SyncCommiteeBits[:32], agg.SyncCommiteeBits[32:])
-	leaves[1], err = merkle_tree.SignatureRoot(agg.SyncCommiteeSignature)
+func (agg *SyncAggregate) HashSSZ() ([]byte, error) {
+	p1 := utils.Keccak256(agg.SyncCommiteeBits[:32], agg.SyncCommiteeBits[32:])
+	p2, err := merkle_tree.SignatureRoot(agg.SyncCommiteeSignature)
 	if err != nil {
-		return [32]byte{}, err
+		return nil, err
 	}
+	leaves := make([]byte, 64)
+	copy(leaves[:32], p1[:])
+	copy(leaves[32:], p2)
 
 	return merkle_tree.ArraysRoot(leaves, 2)
 }
